@@ -79,4 +79,9 @@ Capture.prototype.captureVideo = function (successCallback, errorCallback, optio
     _capture('captureVideo', successCallback, errorCallback, options);
 };
 
+Capture.prototype.deleteFile = function (successCallback, errorCallback, options) {
+    _capture('deleteFile', successCallback, errorCallback, options);
+};
+
+
 module.exports = new Capture();
