@@ -142,6 +142,8 @@ public class Capture extends CordovaPlugin {
             this.captureImage(pendingRequests.createRequest(CAPTURE_IMAGE, options, callbackContext));
         } else if (action.equals("captureVideo")) {
             this.captureVideo(pendingRequests.createRequest(CAPTURE_VIDEO, options, callbackContext));
+        } else if (action.equals("deleteFile")) {
+            this.deleteFile(options.getString("fullPath"));
         } else {
             return false;
         }
