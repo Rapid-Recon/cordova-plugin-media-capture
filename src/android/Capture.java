@@ -29,9 +29,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import android.content.ActivityNotFoundException;
+import android.media.MediaScannerConnection;
 import android.os.Build;
 import android.os.Bundle;
 
+import org.apache.cordova.BuildConfig;
 import org.apache.cordova.file.FileUtils;
 import org.apache.cordova.file.LocalFilesystemURL;
 
@@ -58,7 +60,11 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.provider.Settings;
 
+import androidx.annotation.RequiresApi;
+
+@RequiresApi(api = Build.VERSION_CODES.R)
 public class Capture extends CordovaPlugin {
 
     private static final String VIDEO_3GPP = "video/3gpp";
@@ -79,10 +85,10 @@ public class Capture extends CordovaPlugin {
     private static final int CAPTURE_PERMISSION_DENIED = 4;
     private static final int CAPTURE_NOT_SUPPORTED = 20;
 
-    private static final String[] storagePermissions = new String[]{
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
-    };
+    private static final String[] storagePermissions =new String[] {
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    };
 
     private boolean cameraPermissionInManifest;     // Whether or not the CAMERA permission is declared in AndroidManifest.xml
 
@@ -143,7 +149,8 @@ public class Capture extends CordovaPlugin {
         } else if (action.equals("captureVideo")) {
             this.captureVideo(pendingRequests.createRequest(CAPTURE_VIDEO, options, callbackContext));
         } else if (action.equals("deleteFile")) {
-            this.deleteFile(options.getString("fullPath"));
+            Uri uri = Uri.parse(options.getString("fullPath"));
+            this.deleteFile(uri.getPath());
         } else {
             return false;
         }
@@ -260,7 +267,12 @@ public class Capture extends CordovaPlugin {
      */
     private void captureAudio(Request req) {
         if (isMissingStoragePermissions(req)) return;
-
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                requestManageStoragePermission();
+                return;
+            }
+        }
         try {
             Intent intent = new Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION);
             this.cordova.startActivityForResult((CordovaPlugin) this, intent, req.requestCode);
@@ -280,11 +292,24 @@ public class Capture extends CordovaPlugin {
         return cache.getAbsolutePath();
     }
 
+    private void requestManageStoragePermission() {
+        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+        Uri uri = Uri.fromParts("package", this.cordova.getActivity().getPackageName(), null);
+        intent.setData(uri);
+        this.cordova.getActivity().startActivity(intent);
+    }
+
     /**
      * Sets up an intent to capture images.  Result handled by onActivityResult()
      */
     private void captureImage(Request req) {
         if (isMissingCameraPermissions(req)) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                requestManageStoragePermission();
+                return;
+            }
+        }
 
         // Save the number of images currently on disk for later
         this.numPics = queryImgDB(whichContentStore()).getCount();
@@ -312,6 +337,12 @@ public class Capture extends CordovaPlugin {
      */
     private void captureVideo(Request req) {
         if (isMissingCameraPermissions(req)) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                requestManageStoragePermission();
+                return;
+            }
+        }
 
         Intent intent = new Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE);
 
@@ -379,17 +410,22 @@ public class Capture extends CordovaPlugin {
         }
     }
 
-    public void deleteFile(String fullPath) {
+    private void deleteFile(String fullPath) {
         File file = new File(fullPath);
-        file.delete();
         if (file.exists()) {
-            file.getCanonicalFile().delete();
-            if (file.exists()) {
-                getApplicationContext().deleteFile(file.getName());
-            }
+            file.delete();
+            scanAddedFile(fullPath);
         }
     }
 
+    private void scanAddedFile(String path) {
+        try {
+            MediaScannerConnection.scanFile(this.cordova.getActivity().getApplicationContext(), new String[]{path},
+                    null, null);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     public void onAudioActivityResult(Request req, Intent intent) {
         // Get the uri of the audio clip
@@ -534,6 +570,7 @@ public class Capture extends CordovaPlugin {
                 null,
                 null);
     }
+
 
     /**
      * Used to find out if we are in a situation where the Camera Intent adds to images
