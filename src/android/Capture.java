@@ -149,8 +149,9 @@ public class Capture extends CordovaPlugin {
         } else if (action.equals("captureVideo")) {
             this.captureVideo(pendingRequests.createRequest(CAPTURE_VIDEO, options, callbackContext));
         } else if (action.equals("deleteFile")) {
-            Uri uri = Uri.parse(options.getString("fullPath"));
-            this.deleteFile(uri.getPath());
+            this.deleteFile(options.getString("contentUri"));
+//            Uri uri = Uri.parse(options.getString("fullPath"));
+//            this.deleteFile(uri.getPath());
         } else {
             return false;
         }
@@ -267,12 +268,12 @@ public class Capture extends CordovaPlugin {
      */
     private void captureAudio(Request req) {
         if (isMissingStoragePermissions(req)) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                requestManageStoragePermission();
-                return;
-            }
-        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//            if (!Environment.isExternalStorageManager()) {
+//                requestManageStoragePermission();
+//                return;
+//            }
+//        }
         try {
             Intent intent = new Intent(android.provider.MediaStore.Audio.Media.RECORD_SOUND_ACTION);
             this.cordova.startActivityForResult((CordovaPlugin) this, intent, req.requestCode);
@@ -304,12 +305,12 @@ public class Capture extends CordovaPlugin {
      */
     private void captureImage(Request req) {
         if (isMissingCameraPermissions(req)) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                requestManageStoragePermission();
-                return;
-            }
-        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//            if (!Environment.isExternalStorageManager()) {
+//                requestManageStoragePermission();
+//                return;
+//            }
+//        }
 
         // Save the number of images currently on disk for later
         this.numPics = queryImgDB(whichContentStore()).getCount();
@@ -337,12 +338,12 @@ public class Capture extends CordovaPlugin {
      */
     private void captureVideo(Request req) {
         if (isMissingCameraPermissions(req)) return;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                requestManageStoragePermission();
-                return;
-            }
-        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+//            if (!Environment.isExternalStorageManager()) {
+//                requestManageStoragePermission();
+//                return;
+//            }
+//        }
 
         Intent intent = new Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE);
 
@@ -410,13 +411,17 @@ public class Capture extends CordovaPlugin {
         }
     }
 
-    private void deleteFile(String fullPath) {
-        File file = new File(fullPath);
-        if (file.exists()) {
-            file.delete();
-            scanAddedFile(fullPath);
-        }
+    private void deleteFile(String contentUri) {
+        this.cordova.getActivity().getContentResolver().delete(Uri.parse(contentUri), null, null);
     }
+
+//    private void deleteFile(String fullPath) {
+//        File file = new File(fullPath);
+//        if (file.exists()) {
+//            file.delete();
+//            scanAddedFile(fullPath);
+//        }
+//    }
 
     private void scanAddedFile(String path) {
         try {
@@ -521,6 +526,7 @@ public class Capture extends CordovaPlugin {
             // File properties
             obj.put("name", fp.getName());
             obj.put("fullPath", Uri.fromFile(fp));
+            obj.put("contentUri", data.toString());
             if (url != null) {
                 obj.put("localURL", url.toString());
             }
