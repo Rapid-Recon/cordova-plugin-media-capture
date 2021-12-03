@@ -31,6 +31,7 @@ function wrapMediaFiles (pluginResult) {
         // Backwards compatibility
         mediaFile.localURL = pluginResult[i].localURL || pluginResult[i].fullPath;
         mediaFile.fullPath = pluginResult[i].fullPath;
+        mediaFile.contentUri = pluginResult[i].contentUri;
         mediaFile.type = pluginResult[i].type;
         mediaFile.lastModifiedDate = pluginResult[i].lastModifiedDate;
         mediaFile.size = pluginResult[i].size;
